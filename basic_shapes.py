@@ -2,15 +2,17 @@
 Functions that defines basic shapes
 """
 
-from pyautocad import Autocad, APoint
+import mypy
+from typing import Union
+from pyautocad import Autocad
+from pyautocad import APoint as P
 import array, itertools
 from math import atan, tan, sin, cos
 import pickle
-from pyautocad import APoint as P
 from math import pi, sqrt
 
 acad = Autocad()
-acad.prompt("pyautocad: ActiveX automation of AutoCAD using Python\n")
+acad.prompt("ACS running\n")
 print(f"applying changes in file: {acad.doc.Name}")
 
 # coordinates: micrometers
@@ -54,7 +56,9 @@ def check_length(variable, variable_name, length):
 
 # low level functions
 
-def load_font(path="font_data.pickle"):
+def load_font(
+    path: str = "font_data.pickle",
+):
     """[loads font data]
 
     font_data = {
@@ -72,13 +76,19 @@ def load_font(path="font_data.pickle"):
         [dict]: [font data]
     """
     # assertions
-    check_data_type(path, "path", [str])
 
     with open(path, mode='rb') as f:
         font_data = pickle.load(f)
     return font_data
 
-def text(x0, y0, height, string, font_data, layer=None):
+def text(
+    x0: Union[int, float],
+    y0: Union[int, float], 
+    height: Union[int, float], 
+    string: str, 
+    font_data: dict, 
+    layer: Union[str, None] = None,
+):
     """[write text as polyline]
 
     Args:
@@ -88,13 +98,6 @@ def text(x0, y0, height, string, font_data, layer=None):
         string ([str]): [text]
         font_data ([dict]): [font data including coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(height, "height", [int, float])
-    check_data_type(string, "string", [str])
-    check_data_type(font_data, "font_data", [dict])
-    check_data_type(layer, "layer", [str, None])
 
     unicode_characters = font_data["unicode_characters"]
     unicode_counts = font_data["unicode_counts"]
@@ -118,16 +121,16 @@ def text(x0, y0, height, string, font_data, layer=None):
             print(f"character {char}(unicode:{ord(char)}) doesn't exist in font_data")
             offset_x += 5
 
-def polyline(VerticesList, layer=None):
+def polyline(
+    VerticesList: list,
+    layer: Union[str, None] = None,
+):
     """[create polyline from 2d list]
 
     Args:
         VerticesList ([float 2d list]): [coordinates of the polyline]
         layer (str, optional): [layer of the polyline]. Defaults to None.
     """
-    # assertions
-    check_data_type(VerticesList, "VerticesList", [list])
-    check_data_type(layer, "layer", [str, None])
 
     VerticesList = flatten(VerticesList)
     VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
@@ -138,7 +141,13 @@ def polyline(VerticesList, layer=None):
     return polyline_obj
 
 # define basic shapes
-def cross(x0,y0,w=25.0,l=125.0,layer=None):
+def cross(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    w: Union[int, float] = 25.0,
+    l: Union[int, float] = 125.0,
+    layer: Union[str, None] = None,
+):
     """[cross for maskless alignment]
 
         p0  p11
@@ -156,12 +165,6 @@ def cross(x0,y0,w=25.0,l=125.0,layer=None):
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(w, "w", [int, float])
-    check_data_type(l, "l", [int, float])
-    check_data_type(layer, "layer", [str, None])
 
     # define point coordinates with offset (x,y)
     points = [0 for i in range(12)]
@@ -181,7 +184,14 @@ def cross(x0,y0,w=25.0,l=125.0,layer=None):
     polyline_obj = polyline(points, layer) # connect points with polyline
     return points
 
-def square(x0,y0,x,y,xy0_position="center",layer=None):
+def square(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    x: Union[int, float],
+    y: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create square]
 
     p0  p3
@@ -199,12 +209,6 @@ def square(x0,y0,x,y,xy0_position="center",layer=None):
         [2d list]: [list of x,y coordinates]
     """
     # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(x, "x", [int, float])
-    check_data_type(y, "y", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["bottom_left", "bottom_center", "bottom_right", "top_left", "top_center", "top_right", "center_left", "center", "center_right"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -230,7 +234,13 @@ def square(x0,y0,x,y,xy0_position="center",layer=None):
     polyline_obj = polyline(points, layer) # connect points with polyline
     return points
 
-def circle(x0,y0,r,xy0_position="center",layer=None):
+def circle(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create circular sector (pizza shape)]
 
     p0 . . . p2 angle2
@@ -252,12 +262,6 @@ def circle(x0,y0,r,xy0_position="center",layer=None):
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r, "r", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point1", "point2"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -273,7 +277,16 @@ def circle(x0,y0,r,xy0_position="center",layer=None):
     polyline_obj.SetBulge(1, calculate_bulge(pi))
     return points
 
-def triangle(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
+def triangle(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1: Union[int, float],
+    r2: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create triangle]
 
     p0 . . . p2 angle2 r2
@@ -296,15 +309,6 @@ def triangle(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r1, "r1", [int, float])
-    check_data_type(r2, "r2", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point1", "point2"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -321,7 +325,15 @@ def triangle(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
     polyline_obj = polyline(points, layer)
     return points
 
-def circular_sector(x0,y0,r,angle1,angle2,xy0_position="center",layer=None):
+def circular_sector(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create circular sector (pizza shape)]
 
     p0 . . . p2 angle2
@@ -343,14 +355,6 @@ def circular_sector(x0,y0,r,angle1,angle2,xy0_position="center",layer=None):
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r, "r", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point1", "point2"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -368,7 +372,16 @@ def circular_sector(x0,y0,r,angle1,angle2,xy0_position="center",layer=None):
     polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # inner_arc
     return points
 
-def annular_sector(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
+def annular_sector(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1: Union[int, float],
+    r2: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create annular sector (baumkuchen German tree cake shape)]
 
      .      p3 .  p2 angle2
@@ -392,15 +405,6 @@ def annular_sector(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
     Returns:
         [2d list]: [list of x,y coordinates]
     """   
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r1, "r1", [int, float])
-    check_data_type(r2, "r2", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point0", "point1", "point2", "point3"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -422,8 +426,17 @@ def annular_sector(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
     polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # outer_arc
     return points
 
-
-def annular_sector_with_anchor_points(x0,y0,r1,r2,r3,angle1,angle2,xy0_position="center",layer=None):
+def annular_sector_with_anchor_points(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1: Union[int, float],
+    r2: Union[int, float],
+    r3: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create annular sector (baumkuchen German tree cake shape)]
 
      .     p4      p3 .  p2 angle2
@@ -450,16 +463,7 @@ def annular_sector_with_anchor_points(x0,y0,r1,r2,r3,angle1,angle2,xy0_position=
 
     Returns:
         [2d list]: [list of x,y coordinates]
-    """   
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r1, "r1", [int, float])
-    check_data_type(r2, "r2", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
+    """
     xy0_positions = ["center", "point0", "point1", "point2", "point3"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -485,7 +489,16 @@ def annular_sector_with_anchor_points(x0,y0,r1,r2,r3,angle1,angle2,xy0_position=
     polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # outer_arc
     return points
 
-def annular_square_1(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
+def annular_square_1(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1: Union[int, float],
+    r2: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create annular sector with square]
 
      .      p4 . . p3 angle2
@@ -509,15 +522,6 @@ def annular_square_1(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None)
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r1, "r1", [int, float])
-    check_data_type(r2, "r2", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point0", "point1", "point2", "point3", "point4"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -540,7 +544,16 @@ def annular_square_1(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None)
     polyline_obj.SetBulge(4, calculate_bulge(angle1 - angle2)) # inner_arc
     return points
 
-def annular_square_2(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None):
+def annular_square_2(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1: Union[int, float],
+    r2: Union[int, float],
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create annular sector with part square]
 
      .      p3 angle2
@@ -564,15 +577,6 @@ def annular_square_2(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None)
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0, "x0", [int, float])
-    check_data_type(y0, "y0", [int, float])
-    check_data_type(r1, "r1", [int, float])
-    check_data_type(r2, "r2", [int, float])
-    check_data_type(angle1, "angle1", [int, float])
-    check_data_type(angle2, "angle2", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(layer, "layer", [str, None])
     xy0_positions = ["center", "point0", "point1", "point2", "point3"]
     check_value(xy0_position, "xy0_position", xy0_positions)
 
@@ -595,7 +599,16 @@ def annular_square_2(x0,y0,r1,r2,angle1,angle2,xy0_position="center",layer=None)
     polyline_obj.SetBulge(3, calculate_bulge(angle1 - angle2)) # inner_arc
     return points
 
-def trapezoid(x0,y0,widths,offset,height,xy0_position="bottom_center",parallel_axis="x",layer=None):
+def trapezoid(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    widths: list,
+    offset: Union[int, float],
+    height: Union[int, float],
+    parallel_axis: str = "x",
+    xy0_position: str = "center",
+    layer: Union[str, None] = None,
+):
     """[create trapezoid]
 
     parallel_axis = "x"
@@ -621,15 +634,6 @@ def trapezoid(x0,y0,widths,offset,height,xy0_position="bottom_center",parallel_a
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    check_data_type(x0,     "x0",     [int, float])
-    check_data_type(y0,     "y0",     [int, float])
-    check_data_type(widths, "widths", [list])
-    check_data_type(offset, "offset", [int, float])
-    check_data_type(height, "height", [int, float])
-    check_data_type(xy0_position, "xy0_position", [str])
-    check_data_type(parallel_axis, "parallel_axis", [str])
-    check_data_type(layer, "layer", [str, None])
     parallel_axes = ["x","y"]
     check_value(parallel_axis, "parallel_axis", parallel_axes)
     check_length(widths, "widths", 2)

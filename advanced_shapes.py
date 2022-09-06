@@ -2,18 +2,20 @@
 Functions that defines advanced shapes, which is an conbination of the basic shapes
 """
 
+import mypy
+from typing import Union
 from basic_shapes import *
 from itertools import accumulate, count
 from math import pi
 
 # APIs
 
-def alignment_mark(layer=None):
+def alignment_mark(
+    layer: Union[str, None] = None,
+):
     """[creates maskless alignment mark consisting of crosses, "top left" indicator and corner cross indicator]
 
     """
-    # assertions
-    check_data_type(layer, "layer", [str, None])
 
     # crosses
     # center points for crosses (exclude x or y = 0)
@@ -39,7 +41,15 @@ def alignment_mark(layer=None):
     triangle(4850,4850,300,300,pi,pi*3/2, layer=layer) # top right
 
 
-def straight_lines(x0,y0,length,widths,gaps,parallel_axis="x",layer=None): 
+def straight_lines(
+    x0,
+    y0,
+    length,
+    widths,
+    gaps,
+    parallel_axis="x",
+    layer=None
+): 
     """[creates straight lines API]
 
     [parallel_axis = "x"]
