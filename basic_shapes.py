@@ -25,7 +25,7 @@ def init(
     Args:
         writer (str, optional): describes which writer to use to write to cad. Defaults to "pyautocad".
     """
-    global msp, writer_
+    global msp, writer_, doc
     writer_ = writer
     if writer == "pyautocad":
         msp = Autocad()
@@ -34,11 +34,21 @@ def init(
     elif writer == "ezdxf":
         if filename is None:
             cwd = os.path.dirname(__file__)
-            os.mkdir(os.path.join(cwd, "test"))
-            doc = ezdxf.new(os.path.join(cwd, "test", datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')))
+            directory = os.path.join(cwd, "test")
+            path = os.path.join(cwd, "test", f"{datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')}")
+            if not os.path.isdir(directory):
+                os.mkdir(directory)
+            doc = ezdxf.new("R2018")
+            doc.saveas(path)
         else:
             doc = ezdxf.readfile(filename)
         msp = doc.modelspace()
+
+def end():
+    """[save dxf is writer=="ezdxf"]
+    """
+    if writer_ == "ezdxf":
+        doc.save()
 
 def calculate_bulge(
     angle: Union[int, float], 
@@ -63,24 +73,24 @@ def polyline(
         layer (str, optional): [layer of the polyline]. Defaults to None.
     """
     flatten = lambda list1: list(itertools.chain.from_iterable(list1)) # flatten n dim list
-    VerticesList = flatten(VerticesList)
-    VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
-    global writer
-    if writer == "pyautocad":
+    global writer_
+    if writer_ == "pyautocad":
+        VerticesList = flatten(VerticesList)
+        VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
         polyline_obj = msp.model.AddLightWeightPolyline(VerticesList) # 2d polyline
         polyline_obj.Closed = True # close the polyline (required for dxf -> imask2 conversion)
         if layer is not None: # if layer is None, layer will be the currently selected layer in autocad
             polyline_obj.Layer = layer # set layer of polyline
-    elif writer == "ezdxf":
+    elif writer_ == "ezdxf":
         polyline_obj = msp.add_lwpolyline(VerticesList, dxfattribs={'layer': layer})
         polyline_obj.closed = True
     return polyline_obj
 
 def set_bulge(polyline_obj, index, bulge):
-    global writer
-    if writer == "pyautocad":
+    global writer_
+    if writer_ == "pyautocad":
         polyline_obj.SetBulge(index, calculate_bulge(bulge))
-    elif writer == "ezdxf":
+    elif writer_ == "ezdxf":
         x, y, start_width, end_width, _ = polyline_obj[index]
         polyline_obj[index] = [x, y, start_width, end_width, calculate_bulge(bulge)]
 
@@ -1062,56 +1072,21 @@ def tapers(
 
 if __name__ == "__main__":
     init(writer="ezdxf")
-    ############################################################################
-    ###### test trapezoid
-    ############################################################################
-    # debug: p0~p3 is (200,300),(50,200),(350,200),(300,300) from top left, counter clockwise
-    y_offset = 0
-    trapezoid(50,200+y_offset, [100,300,50],100,xy0_position="bottom_left",parallel_axis="x")
-    y_offset = 200
-    trapezoid(200,200+y_offset,[100,300,50],100,xy0_position="bottom_center",parallel_axis="x")
-    y_offset = 400
-    trapezoid(350,200+y_offset,[100,300,50],100,xy0_position="bottom_right",parallel_axis="x")
-    y_offset = 600
-    trapezoid(200,300+y_offset,[100,300,50],100,xy0_position="top_left",parallel_axis="x")
-    y_offset = 800
-    trapezoid(250,300+y_offset,[100,300,50],100,xy0_position="top_center",parallel_axis="x")
-    y_offset = 1000
-    trapezoid(300,300+y_offset,[100,300,50],100,xy0_position="top_right",parallel_axis="x")
 
-    # debug: p0~p3 is (100,50),(100,-350),(250,-350),(250,-150) from top left, counter clockwise
-    x_offset = 0
-    trapezoid(100+x_offset,50,150,[200,400,-100],xy0_position="left_top",parallel_axis="y")
-    x_offset = 200
-    trapezoid(100+x_offset,-150,150,[200,400,-100],xy0_position="left_center",parallel_axis="y")
-    x_offset = 400
-    trapezoid(100+x_offset,-350,150,[200,400,-100],xy0_position="left_bottom",parallel_axis="y")
-    x_offset = 600
-    trapezoid(250+x_offset,-150,150,[200,400,-100],xy0_position="right_top",parallel_axis="y")
-    x_offset = 800
-    trapezoid(250+x_offset,-250,150,[200,400,-100],xy0_position="right_center",parallel_axis="y")
-    x_offset = 1000
-    trapezoid(250+x_offset,-350,150,[200,400,-100],xy0_position="right_bottom",parallel_axis="y")
+    doc.layers.add(name="layer0")
+    
+    # test circular_sector
+    circular_sector(200,200,100,3.14/6,3.14/2,layer="layer0")
 
-    ############################################################################
-    ###### test circular_sector
-    ############################################################################
-    circular_sector(200,200,100,3.14/6,3.14/2)
+    # test annular_sector
+    annular_sector(0,0,50,100,3.14/6,3.14/2,layer="layer0")
 
-    ############################################################################
-    ###### test annular_sector
-    ############################################################################
-    annular_sector(0,0,50,100,3.14/6,3.14/2)
+    # test triangle
+    triangle(100,100,50,75,3.14/6,3.14/2,layer="layer0")
 
-    ############################################################################
-    ###### test triangle
-    ############################################################################
-    triangle(100,100,50,75,3.14/6,3.14/2)
-
-    ############################################################################
-    ###### test text
-    ############################################################################
+    # test text
     font_data = load_font()
-    text(0,0,100,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", font_data)
-    text(0,150,100,"1234567890-^\@[;:],./\\=~|`{+*}<>?_", font_data)
-    text(0,300,100,"あいうえおかきくけこさしすせそなにぬねのはひふへほまみむめもやゆよわをん", font_data)
+    text(0,0,100,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", font_data,layer="layer0")
+    text(0,150,100,"1234567890-^\@[;:],./\\=~|`{+*}<>?_", font_data,layer="layer0")
+    text(0,300,100,"あいうえおかきくけこさしすせそなにぬねのはひふへほまみむめもやゆよわをん", font_data,layer="layer0")
+    end()
