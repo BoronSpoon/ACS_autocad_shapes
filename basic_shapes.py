@@ -35,7 +35,7 @@ def init(
         if filename is None:
             cwd = os.path.dirname(__file__)
             directory = os.path.join(cwd, "test")
-            path = os.path.join(cwd, "test", f"{datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')}")
+            path = os.path.join(cwd, "test", f"{datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')}.dxf")
             if not os.path.isdir(directory):
                 os.mkdir(directory)
             doc = ezdxf.new("R2018")
