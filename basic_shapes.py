@@ -10,49 +10,26 @@ import array, itertools
 from math import atan, tan, sin, cos
 import pickle
 from math import pi, sqrt
-
-acad = Autocad()
-acad.prompt("ACS running\n")
-print(f"applying changes in file: {acad.doc.Name}")
-
 # coordinates: micrometers
 # angles: radians
 
-# very low level functions
-flatten = lambda list1: list(itertools.chain.from_iterable(list1)) # flatten n dim list
-calculate_bulge = lambda angle: tan(angle/4) # calculate bulge used in polyline_obj.SetBulge
+def init():
+    """[initialize ACS]
+    """
+    global acad
+    acad = Autocad()
+    acad.prompt("ACS running\n")
+    print(f"applying changes in file: {acad.doc.Name}")
 
-def check_data_type(variable, variable_name, types):
-    """[assert data type of variable]
+def calculate_bulge(
+    angle: Union[int, float], 
+):
+    """[calculate bulge used in polyline_obj.SetBulge]
 
     Args:
-        variable ([variable]): [variable to check data type]
-        variable_name ([str]): [name of the variable]
-        types ([list]): [list containing types]
+        angle (Union[int, float]): _description_
     """
-    # check if variable is one of types
-    types = [type(None) if type_ == None else type_ for type_ in types] # convert None to NoneType (to use in isinstance)
-    assert any([isinstance(variable, type_) for type_ in types]), f"'{variable_name}' must be in {types}"
-
-def check_value(variable, variable_name, values):
-    """[check if variable is one of the values]
-
-    Args:
-        variable ([variable]): [variable to check value]
-        variable_name ([str]): [name of the variable]
-        values ([list]): [list containing values]
-    """
-    assert variable in values, f"'{variable_name}' must be one of the following: {values}"
-
-def check_length(variable, variable_name, length):
-    """[check length of variable]
-
-    Args:
-        variable ([variable]): [variable to check length]
-        variable_name ([str]): [name of the variable]
-        length ([int]): [length of variable]
-    """
-    assert len(variable) == length, f"'{variable_name}' must be list of length {length}"
+    return tan(angle/4)
 
 # low level functions
 
@@ -132,6 +109,7 @@ def polyline(
         layer (str, optional): [layer of the polyline]. Defaults to None.
     """
 
+    flatten = lambda list1: list(itertools.chain.from_iterable(list1)) # flatten n dim list
     VerticesList = flatten(VerticesList)
     VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
     polyline_obj = acad.model.AddLightWeightPolyline(VerticesList) # 2d polyline
@@ -141,6 +119,7 @@ def polyline(
     return polyline_obj
 
 # define basic shapes
+
 def cross(
     x0: Union[int, float],
     y0: Union[int, float],
@@ -208,9 +187,6 @@ def square(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    # assertions
-    xy0_positions = ["bottom_left", "bottom_center", "bottom_right", "top_left", "top_center", "top_right", "center_left", "center", "center_right"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "bottom_left":   [x0,       y0],
@@ -262,8 +238,6 @@ def circle(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point1", "point2"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center": [x0, y0],
@@ -309,8 +283,6 @@ def triangle(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point1", "point2"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center": [x0, y0],
@@ -355,8 +327,6 @@ def circular_sector(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point1", "point2"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center": [x0, y0],
@@ -404,9 +374,7 @@ def annular_sector(
 
     Returns:
         [2d list]: [list of x,y coordinates]
-    """   
-    xy0_positions = ["center", "point0", "point1", "point2", "point3"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
+    """
 
     start_coordinates = {
         "center": [x0,                  y0],
@@ -464,8 +432,6 @@ def annular_sector_with_anchor_points(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point0", "point1", "point2", "point3"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center": [x0,                  y0],
@@ -522,8 +488,6 @@ def annular_square_1(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point0", "point1", "point2", "point3", "point4"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center": [x0,                                       y0],
@@ -577,8 +541,6 @@ def annular_square_2(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    xy0_positions = ["center", "point0", "point1", "point2", "point3"]
-    check_value(xy0_position, "xy0_position", xy0_positions)
 
     start_coordinates = {
         "center":  [x0,                                   y0],
@@ -634,14 +596,9 @@ def trapezoid(
     Returns:
         [2d list]: [list of x,y coordinates]
     """
-    parallel_axes = ["x","y"]
-    check_value(parallel_axis, "parallel_axis", parallel_axes)
-    check_length(widths, "widths", 2)
 
     if parallel_axis == "x":
         # assertions
-        xy0_positions = ["bottom_left", "bottom_center", "bottom_right", "top_left", "top_center", "top_right"]
-        check_value(xy0_position, "xy0_position", xy0_positions)
 
         x1,x2 = widths # top, bottom
         x12 = offset # offset of top and bottom (top center - bottom center x coordinate)
@@ -663,10 +620,6 @@ def trapezoid(
         points[2] = [start_coordinate[0] + x2 , start_coordinate[1]]
         points[3] = [start_coordinate[0] + x2/2 + x12 + x1/2 , start_coordinate[1] + y]
     elif parallel_axis == "y":
-        # assertions
-        xy0_positions = ["left_top", "left_center", "left_bottom", "right_top", "right_center", "right_bottom"]
-        check_value(xy0_position, "xy0_position", xy0_positions)
-
         y1,y2 = widths # right, left
         y12 = offset # offset of right and left (right center - left center y coordinate)
         x = height # height of trapezoid
