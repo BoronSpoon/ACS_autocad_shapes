@@ -1,25 +1,44 @@
-"""
-Functions that defines basic shapes
-"""
-
 import mypy
 from typing import Union
 from pyautocad import Autocad
 from pyautocad import APoint as P
+import ezdxf
 import array, itertools
 from math import atan, tan, sin, cos
 import pickle
 from math import pi, sqrt
+import datetime
+import os
 # coordinates: micrometers
 # angles: radians
 
-def init():
+def init(
+    writer: str = "pyautocad",
+    filename: Union[str, None] = None,
+):
     """[initialize ACS]
+
+    for the writers:
+    "pyautocad" is slow but you can see the effect in real time. 
+    "ezdxf" is fast but you must close file while using it.
+
+    Args:
+        writer (str, optional): describes which writer to use to write to cad. Defaults to "pyautocad".
     """
-    global acad
-    acad = Autocad()
-    acad.prompt("ACS running\n")
-    print(f"applying changes in file: {acad.doc.Name}")
+    global msp, writer_
+    writer_ = writer
+    if writer == "pyautocad":
+        msp = Autocad()
+        msp.prompt("ACS running\n")
+        print(f"applying changes in file: {msp.doc.Name}")
+    elif writer == "ezdxf":
+        if filename is None:
+            cwd = os.path.dirname(__file__)
+            os.mkdir(os.path.join(cwd, "test"))
+            doc = ezdxf.new(os.path.join(cwd, "test", datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')))
+        else:
+            doc = ezdxf.readfile(filename)
+        msp = doc.modelspace()
 
 def calculate_bulge(
     angle: Union[int, float], 
@@ -27,9 +46,43 @@ def calculate_bulge(
     """[calculate bulge used in polyline_obj.SetBulge]
 
     Args:
-        angle (Union[int, float]): _description_
+        angle (Union[int, float]): angle to convert from
     """
     return tan(angle/4)
+
+# drawing function
+
+def polyline(
+    VerticesList: list,
+    layer: Union[str, None] = None,
+):
+    """[create polyline from 2d list]
+
+    Args:
+        VerticesList ([float 2d list]): [coordinates of the polyline]
+        layer (str, optional): [layer of the polyline]. Defaults to None.
+    """
+    flatten = lambda list1: list(itertools.chain.from_iterable(list1)) # flatten n dim list
+    VerticesList = flatten(VerticesList)
+    VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
+    global writer
+    if writer == "pyautocad":
+        polyline_obj = msp.model.AddLightWeightPolyline(VerticesList) # 2d polyline
+        polyline_obj.Closed = True # close the polyline (required for dxf -> imask2 conversion)
+        if layer is not None: # if layer is None, layer will be the currently selected layer in autocad
+            polyline_obj.Layer = layer # set layer of polyline
+    elif writer == "ezdxf":
+        polyline_obj = msp.add_lwpolyline(VerticesList, dxfattribs={'layer': layer})
+        polyline_obj.closed = True
+    return polyline_obj
+
+def set_bulge(polyline_obj, index, bulge):
+    global writer
+    if writer == "pyautocad":
+        polyline_obj.SetBulge(index, calculate_bulge(bulge))
+    elif writer == "ezdxf":
+        x, y, start_width, end_width, _ = polyline_obj[index]
+        polyline_obj[index] = [x, y, start_width, end_width, calculate_bulge(bulge)]
 
 # low level functions
 
@@ -97,26 +150,6 @@ def text(
         else: # if unicode doesnt exist in font_data, ignore and move x coordinate by 5
             print(f"character {char}(unicode:{ord(char)}) doesn't exist in font_data")
             offset_x += 5
-
-def polyline(
-    VerticesList: list,
-    layer: Union[str, None] = None,
-):
-    """[create polyline from 2d list]
-
-    Args:
-        VerticesList ([float 2d list]): [coordinates of the polyline]
-        layer (str, optional): [layer of the polyline]. Defaults to None.
-    """
-
-    flatten = lambda list1: list(itertools.chain.from_iterable(list1)) # flatten n dim list
-    VerticesList = flatten(VerticesList)
-    VerticesList = array.array("d", VerticesList) # convert to ActiveX compatible type
-    polyline_obj = acad.model.AddLightWeightPolyline(VerticesList) # 2d polyline
-    polyline_obj.Closed = True # close the polyline (required for dxf -> imask2 conversion)
-    if layer is not None: # if layer is None, layer will be the currently selected layer in autocad
-        polyline_obj.Layer = layer # set layer of polyline
-    return polyline_obj
 
 # define basic shapes
 
@@ -247,8 +280,8 @@ def circle(
     points[0] = [start_coordinate[0]+r/2, start_coordinate[1]]
     points[1] = [start_coordinate[0]-r/2, start_coordinate[1]]
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(0, calculate_bulge(pi))
-    polyline_obj.SetBulge(1, calculate_bulge(pi))
+    set_bulge(polyline_obj, 0, pi)
+    set_bulge(polyline_obj, 1, pi)
     return points
 
 def triangle(
@@ -339,7 +372,7 @@ def circular_sector(
     points[1] = [start_coordinate[0] + r*cos(angle1), start_coordinate[1] + r*sin(angle1)]
     points[2] = [start_coordinate[0] + r*cos(angle2), start_coordinate[1] + r*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # inner_arc
+    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # inner_arc
     return points
 
 def annular_sector(
@@ -390,8 +423,8 @@ def annular_sector(
     points[2] = [start_coordinate[0] + r2*cos(angle2), start_coordinate[1] + r2*sin(angle2)]
     points[3] = [start_coordinate[0] + r1*cos(angle2), start_coordinate[1] + r1*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(3, calculate_bulge(angle1 - angle2)) # inner_arc
-    polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # outer_arc
+    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # outer_arc
     return points
 
 def annular_sector_with_anchor_points(
@@ -451,8 +484,8 @@ def annular_sector_with_anchor_points(
     points[4] = [start_coordinate[0] + r3*cos(angle2), start_coordinate[1] + r3*sin(angle2)]
     points[5] = [start_coordinate[0] + r3*cos(angle1), start_coordinate[1] + r3*sin(angle1)]
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(3, calculate_bulge(angle1 - angle2)) # inner_arc
-    polyline_obj.SetBulge(1, calculate_bulge(angle2 - angle1)) # outer_arc
+    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # outer_arc
     return points
 
 def annular_square_1(
@@ -505,7 +538,7 @@ def annular_square_1(
     points[3] = [start_coordinate[0] + r2*cos(angle2),                      start_coordinate[1] + r2*sin(angle2)]
     points[4] = [start_coordinate[0] + r1*cos(angle2),                      start_coordinate[1] + r1*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(4, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 4, calculate_bulge(angle1 - angle2)) # inner_arc
     return points
 
 def annular_square_2(
@@ -558,7 +591,7 @@ def annular_square_2(
     points[3] = [start_coordinate[0] + r1*cos(angle2),                  start_coordinate[1] + r1*sin(angle2)]
 
     polyline_obj = polyline(points, layer)
-    polyline_obj.SetBulge(3, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
     return points
 
 def trapezoid(
@@ -1028,6 +1061,7 @@ def tapers(
     return points
 
 if __name__ == "__main__":
+    init(writer="ezdxf")
     ############################################################################
     ###### test trapezoid
     ############################################################################
