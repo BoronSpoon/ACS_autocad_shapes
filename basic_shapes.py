@@ -690,9 +690,394 @@ def trapezoid(
     polyline(points, layer) # connect points with polyline
     return points
 
-def trapezoid_test():
-    """[test trapezoid generation function]
+def alignment_mark(
+    layer: Union[str, None] = None,
+):
+    """[creates maskless alignment mark consisting of crosses, "top left" indicator and corner cross indicator]
+
     """
+
+    # crosses
+    # center points for crosses (exclude x or y = 0)
+    # -5000,-4500,...,5000
+    center_points = [i for i in range(-5000,5001,500) if i not in [0]] # exclude 0
+    # define all the center coordinates for the crosses
+    cross_centers = []
+    for i in center_points:
+        cross_centers.extend([[-5000,i],[5000,i],[i,-5000],[i,5000]]) # 4 sides of square
+    # create cross with centers defined above
+    for cross_center in cross_centers:
+        x,y = cross_center
+        cross(x,y,layer=layer)    
+
+    # top left indicator
+    font_data = load_font()
+    text(-5200,5200,1000,"Top-Left", font_data, layer=layer) # write "Top-Left" at top left corner
+
+    # corner cross indicator (located at 4 corners)
+    triangle(-4850,4850,300,300,pi*3/2,0, layer=layer) # top left
+    triangle(-4850,-4850,300,300,0,pi/2, layer=layer)  # bottom left
+    triangle(4850,-4850,300,300,pi/2,pi, layer=layer)  # bottom right
+    triangle(4850,4850,300,300,pi,pi*3/2, layer=layer) # top right
+
+def straight_lines(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    length: Union[int, float],
+    widths: list,
+    gaps: list,
+    parallel_axis: str = "x",
+    layer: Union[str, None] = None,
+): 
+    """[creates straight lines API]
+
+    [parallel_axis = "x"]
+    p4*(N-1) . . . p4*(N-1)+3
+     .      line(N-1)       . width(N-1)
+    p4*(N-1)+1 . . p4*(N-1)+2
+        ~ ~ ~ ~ ~ ~ ~ ~ ~            
+    p4 . . . . . . . . . . p7
+     .        line1         .  width1
+    p5 . . . . . . . . . . p6
+                               gap0
+    p0 . . . . . . . . . . p3
+     .        line0         .  width0
+    p1 . . . . . . . . . . p2
+              length
+
+    [parallel_axis = "y"]
+    p0 . . . p3    p4 . . . p7     p4*(N-1) . . . p4*(N-1)+3
+    .         .    .         .  ~  .              . 
+    .  line0  .    .  line1  .  ~  .   line(N-1)  .  length
+    .         .    .         .  ~  .              . 
+    p1 . . . p2    p5 . . . p6     p4*(N-1)+1 . . p4*(N-1)+2
+      width0   gap0   width1
+
+    Args:
+        x0 ([float]): [bottom left x coordinate]
+        y0 ([float]): [bottom left y coordinate]
+        length ([float]): [length of line]
+        width ([float]): [width of lines]
+        gap ([float]): [gap between lines]
+        parallel_axis (str, optional): [defines whether x or y sides are parallel]. Defaults to "x".
+    """
+
+    N = len(widths)
+    if parallel_axis == "x":
+        # define center_point coordinates with offset (x0,y0)
+        center_points = [0 for i in range(N)]
+        for i in range(N):
+            x = x0 + length/2
+            y = y0 + sum(widths[:i]) + sum(gaps[:i]) + widths[i]/2 # widths[0~(i-1)] + widths[i]/2
+            center_points[i] = [x, y] # single line i
+
+        # define point coordinates
+        points = [0 for i in range(4*N)]
+        for i in range(N):
+            points[4*i+0 : 4*i+4]  = square(center_points[i][0], center_points[i][1], length, widths[i], xy0_position="center", layer=layer)
+
+    elif parallel_axis == "y":
+        # define center_point coordinates with offset (x0,y0)
+        center_points = [0 for i in range(N)]
+        for i in range(N):
+            y = y0 + length/2
+            x = x0 + sum(widths[:i]) + sum(gaps[:i]) + widths[i]/2 # widths[0~(i-1)] + widths[i]/2
+            center_points[i] = [x, y] # single line i
+
+        # define point coordinates
+        points = [0 for i in range(4*N)]
+        for i in range(N):
+            points[4*i+0 : 4*i+4]  = square(center_points[i][0], center_points[i][1], widths[i], length, xy0_position="center", layer=layer)
+    return points
+
+def bend_1(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r: Union[int, float],
+    r1s: list,
+    r2s: list,
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    layer: Union[str, None] = None,
+):
+    """[creates bend API (type1: most inner is circular_sector)]
+
+            r   r1s[0]  r2s[0]
+    p0 . . . p2   p6 . . p5 angle2
+     .     .     .      .
+     .   .     .      .
+    p1 .     .      .
+          .       .
+    p3 .       .   
+     .      .
+     .    .
+    p4 .  angle 1
+
+    Args:
+        x0 ([float]): [center x coordinate of the arcs]
+        y0 ([float]): [center y coordinate of the arcs]
+        r ([float]): [radius of the most inner circular sector]
+        r1s ([float]): [inner radius of the annular sectors]
+        r2s ([float]): [outer radius of the annular sectors]
+        angle1 ([float]): [angle 1 of the arcs]
+        angle2 ([float]): [angle 2 of the arcs]
+    """
+
+    # define point coordinates
+    N = len(r1s) # number of annular sectors
+    points = [0 for i in range(3+4*N)] # circular sector has 3 points instead of 4
+    # circular sector
+    points[0:3] = circular_sector(x0,y0,r,angle1,angle2,layer=layer)
+            
+    # annular sectors
+    for i in range(N):
+        points[4*i+3 : 4*(i+1)+3] = annular_sector(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+    return points
+
+def bend_2(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r1s: list,
+    r2s: list,
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    layer: Union[str, None] = None,
+):
+    """[creates bend API (type2: most inner is NOT circular_sector)]
+
+      r1s[0] r2s[0] r1s[1] r2s[1]
+        p3 . . p2   p7 . . p6 angle2
+    p0 .      .     .      .
+     .       .     .      .
+     .    .      .      .
+    p1 .      .       .
+           .        .
+    p4 .         .   
+     .        .
+     .    .
+    p5 .  angle 1
+
+    Args:
+        x0 ([float]): [center x coordinate of the arcs]
+        y0 ([float]): [center y coordinate of the arcs]
+        r1s ([float]): [inner radius of the annular sectors]
+        r2s ([float]): [outer radius of the annular sectors]
+        angle1 ([float]): [angle 1 of the arcs]
+        angle2 ([float]): [angle 2 of the arcs]
+    """
+    
+    N = len(r1s)
+    points = [0 for i in range(4*N)]
+    # annular sectors
+    for i in range(N):
+        points[4*i : 4*(i+1)] = annular_sector(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+    return points
+
+def bend_3(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r: Union[int, float],
+    r1s: list,
+    r2s: list,
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    layer: Union[str, None] = None,
+):
+    """[creates bend API (type3: most inner is circular_sector, most outer is square)]
+
+            r   r1s[0]  r2s[0]
+    p0 . . . p2   p6 . . p5  p11 . p10 angle2
+     .     .     .      .    .      .
+     .   .     .      .    .        .
+    p1 .     .      .    .          .
+          .       .    .            .
+    p3 .       .     .              .
+     .      .      .                .
+     .    .     .                   .
+    p4 .     .                      .
+          .                         .
+    p7 .                            .
+     .                              .
+    p8 . . . . . . . . . . . . . . p9
+    angle 1
+
+    Args:
+        x0 ([float]): [center x coordinate of the arcs]
+        y0 ([float]): [center y coordinate of the arcs]
+        r ([float]): [radius of the most inner circular sector]
+        r1s ([float]): [inner radius of the annular sectors]
+        r2s ([float]): [outer radius of the annular sectors]
+        angle1 ([float]): [angle 1 of the arcs]
+        angle2 ([float]): [angle 2 of the arcs]
+    """
+
+    # define point coordinates
+    N = len(r1s) # number of annular sectors
+    points = [0 for i in range(4+4*N)] # circular sector has 3 points instead of 4, outer square has 5 points instead of 4
+    # circular sector
+    points[0:3] = circular_sector(x0,y0,r,angle1,angle2,layer=layer)
+            
+    # annular sectors
+    for i in range(N-1):
+        points[4*i+3 : 4*(i+1)+3] = annular_sector(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+    
+    # annular square
+    i = N-1
+    points[4*i+3 : 4*(i+1)+4] = annular_square_1(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+
+    return points
+
+def bend_4(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    r: Union[int, float],
+    r1s: list,
+    r2s: list,
+    angle1: Union[int, float],
+    angle2: Union[int, float],
+    layer: Union[str, None] = None,
+):
+    """[creates bend API (type4: most inner is circular_sector, most outer is part square)]
+
+            r   r1s[0]  r2s[0]
+    p0 . . . p2   p6 . . p5  p10 angle2
+     .     .     .      .    .
+     .   .     .      .    . .
+    p1 .     .      .    .   .
+          .       .    .     .
+    p3 .       .     .       .
+     .      .      .         .
+     .    .     .            .
+    p4 .     .               .
+          .                  .
+    p7 .                     .
+     .                       .
+    p8 . . . . . . . . . . . p9
+    angle 1
+
+    Args:
+        x0 ([float]): [center x coordinate of the arcs]
+        y0 ([float]): [center y coordinate of the arcs]
+        r ([float]): [radius of the most inner circular sector]
+        r1s ([float]): [inner radius of the annular sectors]
+        r2s ([float]): [outer radius of the annular sectors]
+        angle1 ([float]): [angle 1 of the arcs]
+        angle2 ([float]): [angle 2 of the arcs]
+    """
+
+    # define point coordinates
+    N = len(r1s) # number of annular sectors
+    points = [0 for i in range(3+4*N)] # circular sector has 3 points instead of 4, outer square has 4 points
+    # circular sector
+    points[0:3] = circular_sector(x0,y0,r,angle1,angle2,layer=layer)
+            
+    # annular sectors
+    for i in range(N-1):
+        points[4*i+3 : 4*(i+1)+3] = annular_sector(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+    
+    # annular square
+    i = N-1
+    points[4*i+3 : 4*(i+1)+3] = annular_square_2(x0,y0,r1s[i],r2s[i],angle1,angle2,layer=layer)
+
+    return points
+
+def tapers(
+    x0: Union[int, float],
+    y0: Union[int, float],
+    height: Union[int, float],
+    width1s: list,
+    gap1s: list,
+    width2s: list,
+    gap2s: list,
+    parallel_axis: str = "x",
+    layer: Union[str, None] = None,
+):
+    """[creates tapers API]
+
+    [parallel_axis = "x"]
+           width1 gap1
+          p0 . . p3 p4 . . p7 p8 . . p11 
+        .       .   .       .   .      . 
+      .  line0 .    . line1 .    . line2 .  height
+    .         .    .         .    .        . 
+    p1 . . . p2    p5 . . . p6    p9 . . . p10 
+     width2   gap2
+
+    [parallel_axis = "y"]
+            p8 . . . .
+            .  line2  . p11
+            p9 . . .      .   
+                    . . p10
+            p4 . . .             
+            .       . . p7
+            .  line1     . 
+            .       . . p6
+            p5 . . .        gap1
+       gap2         . . p3
+            p0 . . .     .  width1
+     width2 .  line0  . p2
+            p1 . . . .
+                height
+    
+    Args:
+        x0 ([float]): [bottom left x coordinate]
+        y0 ([float]): [bottom left y coordinate]
+        height ([float]): [height of trapezoids]
+        width1s ([list of floats]): [top side lengths from left to right, top to bottom]
+        gap1s ([list of floats]): [top gaps from left to right, top to bottom]
+        width2s ([list of floats]): [bottom side lengths from left to right, top to bottom]
+        gap2s ([list of floats]): [bottom gaps from left to right, top to bottom]
+        parallel_axis (str, optional): [defines whether x or y sides are parallel]. Defaults to "x".
+    """
+    N = len(width1s)
+    if N % 2 == 0: # even tapers
+        # [left_offset].width0. gap0 .width1. [gap1] .width2. gap2 .width3.
+        center = int((N-2)/2)
+        # top sides
+        left_gap1s = gap1s[:center]
+        center_gap1 = gap1s[center]
+        left_width1s = width1s[:center+1]
+        left_offset1 = -(sum(left_width1s) + sum(left_gap1s) + center_gap1/2)
+        # bottom sides
+        left_gap2s = gap2s[:center]
+        center_gap2 = gap2s[center]
+        left_width2s = width2s[:center+1]
+        left_offset2 = -(sum(left_width2s) + sum(left_gap2s) + center_gap2/2)
+    elif N % 2 == 1: # odd tapers
+        # [left_offset].width0. gap0 .width1. gap1 .[width2]. gap2 .width3. gap3 .width4.
+        center = int((N-1)/2)
+        # top sides
+        left_gap1s = gap1s[:center]
+        left_width1s = width1s[:center]
+        center_width1 = width1s[center]
+        left_offset1 = -(sum(left_width1s) + sum(left_gap1s) + center_width1/2)
+        # bottom sides
+        left_gap2s = gap2s[:center]
+        left_width2s = width2s[:center]
+        center_width2 = width2s[center]
+        left_offset2 = -(sum(left_width2s) + sum(left_gap2s) + center_width2/2)
+    points = [0 for i in range(4*N)]
+    top_left_offsets = [0 for i in range(N)]
+    bottom_left_offsets = [0 for i in range(N)]
+    top_bottom_offsets = [0 for i in range(N)]
+    for i in range(N): # calculate offset between top and bottom centers
+        top_left_offsets[i] = left_offset1 + sum(width1s[:i]) + sum(gap1s[:i])
+        bottom_left_offsets[i] = left_offset2 + sum(width2s[:i]) + sum(gap2s[:i])
+        top_bottom_offsets[i] = top_left_offsets[i] - bottom_left_offsets[i] + (width1s[i]-width2s[i])/2
+    for i in range(N):
+        top_width, bottom_width = width1s[i], width2s[i]
+        widths = [top_width, bottom_width]
+        if (parallel_axis == "x"):
+            points[4*i : 4*(i+1)] = trapezoid(x0+bottom_left_offsets[i],y0,widths,top_bottom_offsets[i],height,xy0_position="bottom_left",parallel_axis="x",layer=layer)
+        elif (parallel_axis == "y"):
+            points[4*i : 4*(i+1)] = trapezoid(x0,y0+bottom_left_offsets[i],widths,top_bottom_offsets[i],height,xy0_position="left_top",parallel_axis="y",layer=layer)
+
+    return points
+
+if __name__ == "__main__":
+    ############################################################################
+    ###### test trapezoid
+    ############################################################################
     # debug: p0~p3 is (200,300),(50,200),(350,200),(300,300) from top left, counter clockwise
     y_offset = 0
     trapezoid(50,200+y_offset, [100,300,50],100,xy0_position="bottom_left",parallel_axis="x")
@@ -721,24 +1106,24 @@ def trapezoid_test():
     x_offset = 1000
     trapezoid(250+x_offset,-350,150,[200,400,-100],xy0_position="right_bottom",parallel_axis="y")
 
-def circular_sector_test():
-    """[test circular_sector generation function]
-    """
+    ############################################################################
+    ###### test circular_sector
+    ############################################################################
     circular_sector(200,200,100,3.14/6,3.14/2)
 
-def annular_sector_test():
-    """[test annular_sector generation function]
-    """
+    ############################################################################
+    ###### test annular_sector
+    ############################################################################
     annular_sector(0,0,50,100,3.14/6,3.14/2)
 
-def triangle_test():
-    """[test triangle generation function]
-    """
+    ############################################################################
+    ###### test triangle
+    ############################################################################
     triangle(100,100,50,75,3.14/6,3.14/2)
 
-def text_test():
-    """[test text generation function]
-    """
+    ############################################################################
+    ###### test text
+    ############################################################################
     font_data = load_font()
     text(0,0,100,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", font_data)
     text(0,150,100,"1234567890-^\@[;:],./\\=~|`{+*}<>?_", font_data)
