@@ -71,7 +71,10 @@ def add_layers(
         if writer_ == "pyautocad":
             msp.ActiveDocument.Layers.Add(layer)
         elif writer_ == "ezdxf":
-            doc.layers.add(name=layer)
+            try:
+                doc.layers.add(name=layer)
+            except Exception as e:
+                print(e)
 
 def calculate_bulge(
     angle: Union[int, float], 
