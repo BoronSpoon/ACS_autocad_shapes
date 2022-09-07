@@ -40,7 +40,7 @@ def init(
                 msp = doc.modelspace()
                 path = filename
                 if reset:            
-                    doc = ezdxf.new('R2018') # delete all components of a dxf file
+                    doc = ezdxf.new('R2010') # delete all components of a dxf file
                     msp = doc.modelspace()
                     doc.saveas(path)
                 return None
@@ -53,7 +53,7 @@ def init(
         directory = os.path.join(cwd, "test")
         if not os.path.isdir(directory):
             os.mkdir(directory)
-        doc = ezdxf.new("R2018")
+        doc = ezdxf.new("R2010")
         doc.saveas(path)
         msp = doc.modelspace()
 
@@ -413,7 +413,7 @@ def circular_sector(
     points[1] = [start_coordinate[0] + r*cos(angle1), start_coordinate[1] + r*sin(angle1)]
     points[2] = [start_coordinate[0] + r*cos(angle2), start_coordinate[1] + r*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # inner_arc
+    set_bulge(polyline_obj, 1, angle2 - angle1) # inner_arc
     return points
 
 def annular_sector(
@@ -464,8 +464,8 @@ def annular_sector(
     points[2] = [start_coordinate[0] + r2*cos(angle2), start_coordinate[1] + r2*sin(angle2)]
     points[3] = [start_coordinate[0] + r1*cos(angle2), start_coordinate[1] + r1*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
-    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # outer_arc
+    set_bulge(polyline_obj, 3, angle1 - angle2) # inner_arc
+    set_bulge(polyline_obj, 1, angle2 - angle1) # outer_arc
     return points
 
 def annular_sector_with_anchor_points(
@@ -525,8 +525,8 @@ def annular_sector_with_anchor_points(
     points[4] = [start_coordinate[0] + r3*cos(angle2), start_coordinate[1] + r3*sin(angle2)]
     points[5] = [start_coordinate[0] + r3*cos(angle1), start_coordinate[1] + r3*sin(angle1)]
     polyline_obj = polyline(points, layer)
-    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
-    set_bulge(polyline_obj, 1, calculate_bulge(angle2 - angle1)) # outer_arc
+    set_bulge(polyline_obj, 3, angle1 - angle2) # inner_arc
+    set_bulge(polyline_obj, 1, angle2 - angle1) # outer_arc
     return points
 
 def annular_square_1(
@@ -579,7 +579,7 @@ def annular_square_1(
     points[3] = [start_coordinate[0] + r2*cos(angle2),                      start_coordinate[1] + r2*sin(angle2)]
     points[4] = [start_coordinate[0] + r1*cos(angle2),                      start_coordinate[1] + r1*sin(angle2)]
     polyline_obj = polyline(points, layer)
-    set_bulge(polyline_obj, 4, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 4, angle1 - angle2) # inner_arc
     return points
 
 def annular_square_2(
@@ -632,7 +632,7 @@ def annular_square_2(
     points[3] = [start_coordinate[0] + r1*cos(angle2),                  start_coordinate[1] + r1*sin(angle2)]
 
     polyline_obj = polyline(points, layer)
-    set_bulge(polyline_obj, 3, calculate_bulge(angle1 - angle2)) # inner_arc
+    set_bulge(polyline_obj, 3, angle1 - angle2) # inner_arc
     return points
 
 def trapezoid(
