@@ -15,6 +15,7 @@ import os
 def init(
     writer: str = "pyautocad",
     filename: Union[str, None] = None,
+    reset: bool = False,
 ):
     """[initialize ACS]
 
@@ -25,7 +26,7 @@ def init(
     Args:
         writer (str, optional): describes which writer to use to write to cad. Defaults to "pyautocad".
     """
-    global msp, writer_, doc
+    global msp, writer_, doc, path
     writer_ = writer
     if writer == "pyautocad":
         msp = Autocad()
@@ -37,6 +38,11 @@ def init(
             try:
                 doc = ezdxf.readfile(filename)
                 msp = doc.modelspace()
+                path = filename
+                if reset:            
+                    doc = ezdxf.new('R2018') # delete all components of a dxf file
+                    msp = doc.modelspace()
+                    doc.saveas(path)
                 return None
             except Exception as e:
                 print(e)
@@ -51,9 +57,8 @@ def init(
         doc.saveas(path)
 
         msp = doc.modelspace()
-
 def end():
-    """[save dxf is writer=="ezdxf"]
+    """[save dxf if writer=="ezdxf"]
     """
     if writer_ == "ezdxf":
         doc.save()
