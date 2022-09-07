@@ -55,8 +55,8 @@ def init(
             os.mkdir(directory)
         doc = ezdxf.new("R2018")
         doc.saveas(path)
-
         msp = doc.modelspace()
+
 def end():
     """[save dxf if writer=="ezdxf"]
     """
@@ -739,7 +739,7 @@ def alignment_mark(
 
     # top left indicator
     font_data = load_font()
-    text(-6200,6200,1000,"Top-Left", font_data, layer=layer) # write "Top-Left" at top left corner
+    text(-6200,6200,2000,"Top-Left", font_data, layer=layer) # write "Top-Left" at top left corner
 
     # corner cross indicator (located at 4 corners)
     triangle(-5850,5850,300,300,pi*3/2,0, layer=layer) # top left
