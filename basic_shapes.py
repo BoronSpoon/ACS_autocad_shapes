@@ -710,12 +710,12 @@ def alignment_mark(
 
     # crosses
     # center points for crosses (exclude x or y = 0)
-    # -5000,-4500,...,5000
-    center_points = [i for i in range(-5000,5001,500) if i not in [0]] # exclude 0
+    # -6000,-5500,...,6000
+    center_points = [i for i in range(-6000,6001,500) if i not in [0]] # exclude 0
     # define all the center coordinates for the crosses
     cross_centers = []
     for i in center_points:
-        cross_centers.extend([[-5000,i],[5000,i],[i,-5000],[i,5000]]) # 4 sides of square
+        cross_centers.extend([[-6000,i],[6000,i],[i,-6000],[i,6000]]) # 4 sides of square
     # create cross with centers defined above
     for cross_center in cross_centers:
         x,y = cross_center
@@ -723,13 +723,13 @@ def alignment_mark(
 
     # top left indicator
     font_data = load_font()
-    text(-5200,5200,1000,"Top-Left", font_data, layer=layer) # write "Top-Left" at top left corner
+    text(-6200,6200,1000,"Top-Left", font_data, layer=layer) # write "Top-Left" at top left corner
 
     # corner cross indicator (located at 4 corners)
-    triangle(-4850,4850,300,300,pi*3/2,0, layer=layer) # top left
-    triangle(-4850,-4850,300,300,0,pi/2, layer=layer)  # bottom left
-    triangle(4850,-4850,300,300,pi/2,pi, layer=layer)  # bottom right
-    triangle(4850,4850,300,300,pi,pi*3/2, layer=layer) # top right
+    triangle(-5850,5850,300,300,pi*3/2,0, layer=layer) # top left
+    triangle(-5850,-5850,300,300,0,pi/2, layer=layer)  # bottom left
+    triangle(5850,-5850,300,300,pi/2,pi, layer=layer)  # bottom right
+    triangle(5850,5850,300,300,pi,pi*3/2, layer=layer) # top right
 
 def straight_lines(
     x0: Union[int, float],
