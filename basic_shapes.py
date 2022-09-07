@@ -50,6 +50,21 @@ def end():
     if writer_ == "ezdxf":
         doc.save()
 
+def add_layers(
+    layers: list,
+):
+    """[add new layers]
+
+    Args:
+        layers (list): list of layer names
+    """
+    global msp, writer_, doc
+    for layer in layers:
+        if writer_ == "pyautocad":
+            msp.ActiveDocument.Layers.Add(layer)
+        elif writer_ == "ezdxf":
+            doc.layers.add(name=layer)
+
 def calculate_bulge(
     angle: Union[int, float], 
 ):
@@ -1072,8 +1087,7 @@ def tapers(
 
 if __name__ == "__main__":
     init(writer="ezdxf")
-
-    doc.layers.add(name="layer0")
+    add_layers(["layer0"])
     
     # test circular_sector
     circular_sector(200,200,100,3.14/6,3.14/2,layer="layer0")
