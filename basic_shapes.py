@@ -32,16 +32,24 @@ def init(
         msp.prompt("ACS running\n")
         print(f"applying changes in file: {msp.doc.Name}")
     elif writer == "ezdxf":
-        if filename is None:
-            cwd = os.path.dirname(__file__)
-            directory = os.path.join(cwd, "test")
+        cwd = os.path.dirname(__file__)
+        if filename is not None:
+            try:
+                doc = ezdxf.readfile(filename)
+                msp = doc.modelspace()
+                return None
+            except Exception as e:
+                print(e)
+                path = os.path.join(cwd, "test", filename)    
+        elif filename is None:
             path = os.path.join(cwd, "test", f"{datetime.datetime.now().strftime('%Y-%d-%m_%H-%M-%S')}.dxf")
-            if not os.path.isdir(directory):
-                os.mkdir(directory)
-            doc = ezdxf.new("R2018")
-            doc.saveas(path)
-        else:
-            doc = ezdxf.readfile(filename)
+
+        directory = os.path.join(cwd, "test")
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
+        doc = ezdxf.new("R2018")
+        doc.saveas(path)
+
         msp = doc.modelspace()
 
 def end():
