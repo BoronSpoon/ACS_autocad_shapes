@@ -113,6 +113,7 @@ def polyline(
         if layer is not None: # if layer is None, layer will be the currently selected layer in autocad
             polyline_obj.Layer = layer # set layer of polyline
     elif writer_ == "ezdxf":
+        VerticesList = [[x,y,0.001,0.001] for [x,y] in VerticesList] # add start and end width (1nm width: can be ignored)
         polyline_obj = msp.add_lwpolyline(VerticesList, dxfattribs={'layer': layer})
         polyline_obj.closed = True
     return polyline_obj
